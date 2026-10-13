@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Must follow the import; without it Tailwind v4 keys dark: off prefers-color-scheme, not the .dark class color-mode sets. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --background: oklch(0.985 0 0);
+  --surface: oklch(1 0 0);
+  --foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.552 0.016 285.938);
+  --border: oklch(0.92 0.004 286.32);
+  --accent: oklch(0.546 0.245 262.881);
+  --accent-foreground: oklch(0.985 0 0);
+  --danger: oklch(0.577 0.245 27.325);
+  --success: oklch(0.527 0.154 150.069);
+  --warning: oklch(0.555 0.163 48.998);
+  --syntax-key: oklch(0.496 0.265 301.924);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.141 0.005 285.823);
+  --surface: oklch(0.21 0.006 285.885);
+  --foreground: oklch(0.985 0 0);
+  --muted: oklch(0.705 0.015 286.067);
+  --border: oklch(0.274 0.006 286.033);
+  --accent: oklch(0.707 0.165 254.624);
+  --accent-foreground: oklch(0.141 0.005 285.823);
+  --danger: oklch(0.704 0.191 22.216);
+  --success: oklch(0.792 0.209 151.711);
+  --warning: oklch(0.828 0.189 84.429);
+  --syntax-key: oklch(0.827 0.119 306.383);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-syntax-key: var(--syntax-key);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  textarea,
+  pre,
+  code {
+    @apply font-mono text-sm;
+  }
+}
+
+/* CodeMirror tokens come from @lezer/highlight's classHighlighter; colours follow the theme tokens. */
+.cm-editor .tok-propertyName {
+  color: var(--syntax-key);
+}
+.cm-editor .tok-string {
+  color: var(--success);
+}
+.cm-editor .tok-number {
+  color: var(--accent);
+}
+.cm-editor .tok-bool,
+.cm-editor .tok-keyword {
+  color: var(--warning);
+}
+.cm-editor .tok-punctuation {
+  color: var(--muted);
+}

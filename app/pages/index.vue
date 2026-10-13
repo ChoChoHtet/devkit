@@ -1,0 +1,27 @@
+<script setup lang="ts">
+import { TOOLS } from '~/utils/tools'
+
+useHead({ title: 'Tools' })
+</script>
+
+<template>
+  <section class="space-y-6">
+    <header class="space-y-2">
+      <h1 class="text-2xl font-semibold">Developer tools</h1>
+      <p class="text-muted">Everything runs locally in your browser. Nothing is sent to a server.</p>
+    </header>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <NuxtLink
+        v-for="tool in TOOLS"
+        :key="tool.slug"
+        :to="tool.to"
+        :data-testid="`tool-card-${tool.slug}`"
+        class="group flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 transition-colors hover:border-accent focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+      >
+        <component :is="tool.icon" class="size-6 text-accent" aria-hidden="true" />
+        <h2 class="font-semibold group-hover:text-accent">{{ tool.title }}</h2>
+        <p class="text-sm text-muted">{{ tool.description }}</p>
+      </NuxtLink>
+    </div>
+  </section>
+</template>
