@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v1, ready for review |
+| **Status** | Draft v1.1. Platform, JSON Formatter, Random String, and String Inspector are built. Base64, JWT, and Protobuf are still placeholders (see §10). |
 | **Date** | 2026-10-13 |
 | **Owner** | TBD |
 | **Codebase** | `devkit/` (Nuxt 4 + TypeScript + Vue 3 + Tailwind v4 + Vitest) |
@@ -11,12 +11,14 @@
 
 ## 1. Summary
 
-DevKit is a free, public website with four everyday developer tools:
+DevKit is a free, public website with six everyday developer tools:
 
 1. **JSON Formatter**: format, validate, browse, query, and compare JSON.
-2. **JWT Inspector**: decode, verify, and create JSON Web Tokens, like jwt.io.
-3. **Base64 URL**: convert text to and from Base64URL / Base64.
-4. **Protobuf**: decode protobuf bytes with or without a schema, and encode JSON into protobuf.
+2. **Random String**: generate cryptographically random strings for tokens, passwords, and test data.
+3. **String Inspector**: count characters, lines, and bytes, and see the length of text in each encoding.
+4. **JWT Inspector**: decode, verify, and create JSON Web Tokens, like jwt.io.
+5. **Base64 Encode/Decode**: convert text to and from Base64URL / Base64.
+6. **Protobuf**: decode protobuf bytes with or without a schema, and encode JSON into protobuf.
 
 **The core promise: nothing you paste ever leaves your browser.** There's no backend, no
 analytics, and no storage of your input. That matters because people paste tokens,
@@ -35,6 +37,10 @@ document follows from them.
 | Rendering | **Pages are prerendered at build time** and all tool logic runs in the browser. This replaces the original "SSR disabled" setting so search engines and link previews see real content. There's still no server at runtime. |
 | Input storage | **Never stored.** Only preferences (theme, indent, last-used options) are saved, in localStorage. |
 | Analytics | **None.** |
+| Theme | **Light:** white background, Indigo accent (`#4338ca`). **Dark:** the original near-black background, with a lighter Indigo accent (`#a5b4fc`) for contrast. Each tool has its own colour (`--tool-*` tokens) for its icon and card. |
+| Header | Title and description share one line. The "Runs entirely in your browser" note sits under the title in green. |
+| Base font size | Root 17px. Text sizes are `rem`-based, so they scale together. |
+| Font | **IBM Plex Sans** for UI text and **IBM Plex Mono** for code and values, self-hosted in `public/fonts` (Latin subset). Nothing is loaded from Google at runtime, so the no-requests promise holds. |
 | Max input size | **About 5 MB**, processed in the browser on the main thread. |
 | Shared features | **File drag-and-drop/upload, download output as a file, and keyboard shortcuts** in every tool. |
 | Editor | **CodeMirror 6** for every JSON or code pane (JSON tool, JWT header/payload, Protobuf schema and JSON). |
@@ -48,13 +54,15 @@ document follows from them.
 | Protobuf schema | **One pasted `.proto` file**, plus Google's built-in well-known types. |
 | Protobuf framing | **Plain message, gRPC frame, and length-delimited stream.** |
 | Protobuf use | General purpose: API/gRPC debugging, queue messages, and building test payloads. |
+| Random String scope | Character-type checkboxes (uppercase, lowercase, digits, symbols) plus a custom characters field. Length (default 32) and count. Entropy estimate and unique per batch. Uses `crypto.getRandomValues`. |
+| String Inspector scope | Developer-focused stats: characters (code points), UTF-16 code units, UTF-8 and UTF-16 bytes (with KB/MB), lines, and whitespace count, plus encoded lengths (Base64, Base64URL, hex, URL-encoded, JSON-escaped). Words and character classes are left out as not useful for development. |
 
 ---
 
 ## 3. Product-wide requirements
 
 ### 3.1 Goals
-- Do the four everyday jobs faster and more safely than the popular online tools do.
+- Do the everyday jobs faster and more safely than the popular online tools do.
 - Make privacy verifiable. A strict Content Security Policy blocks every outgoing request,
   so "nothing leaves your browser" is enforced, not just promised.
 - Work well on a laptop, be usable on a phone, and look right in both light and dark mode.
@@ -62,7 +70,7 @@ document follows from them.
 ### 3.2 Non-goals (v1)
 - User accounts, saved history, sharing links, or any backend.
 - Browser extensions, a desktop app, or a CLI.
-- Tools beyond the four listed (for example URL encoding, hashing, or UUIDs). They can come later.
+- Tools beyond the six listed (for example URL encoding, hashing, or UUIDs). They can come later.
 
 ### 3.3 Non-functional requirements
 
@@ -95,7 +103,7 @@ Keyboard shortcuts (Mod = Cmd on macOS, Ctrl elsewhere):
 
 | Shortcut | Action |
 |---|---|
-| Mod + Enter | Run the tool's main action (Format, Encode, Decode, Verify, …) |
+| Mod + Enter | Run the tool's main action (Format, Encode, Decode, Verify, Generate, …) |
 | Alt + Shift + C | Copy the main output |
 | Alt + Shift + D | Download the main output |
 | Alt + Shift + X | Clear the tool |
@@ -115,7 +123,7 @@ icons. Tests run on Vitest 5 with `@nuxt/test-utils` 4.
   inside `<ClientOnly>`, so prerendering never touches it.
 - The theme toggle icon must avoid a hydration mismatch. Render it client-only, or show a
   neutral icon while `colorMode.unknown` is true.
-- Hosting is any static host (open question §9). Security headers are set at the host or CDN.
+- Hosting is any static host (open question §11). Set `NUXT_PUBLIC_SITE_URL` at build time so the sitemap and robots.txt use absolute URLs. Security headers are set at the host or CDN.
 
 **Layers:**
 
@@ -249,20 +257,15 @@ interface JsonQueryResult { matches: unknown[]; count: number }
 ```
 
 ### 4.7 UI overview
-
 ```
-┌ JSON Formatter ─────────────────────────────────────────────────────┐
-│ [Format] [Minify] [Escape] [Unescape]  Indent [2▾]  ☐ Sort keys      │
-│ [Sample] [Clear] [Open file]                                         │
-├──────────────────────────────┬──────────────────────────────────────┤
-│ Input (CodeMirror)           │ Tabs: [Output] [Tree] [Query] [Diff]  │
-│                              │                                      │
-│ 1 {                          │ Output: formatted JSON (read-only)   │
-│ 2   "a": 1,                  │ [Copy] [Download]                    │
-│ 3 } ~~~~ error underline     │                                      │
-├──────────────────────────────┴──────────────────────────────────────┤
-│ ● Valid JSON · 1,204 chars       ⚠ Large numbers may lose precision  │
-└─────────────────────────────────────────────────────────────────────┘
+Header   {} JSON Formatter   Validate, pretty-print, minify and sort JSON.        [Shortcuts]
+         ✓ Runs entirely in your browser.
+Toolbar  [Format] [Minify] [Escape] [Unescape]  Indent [2▾]  ☐ Sort keys   [Sample] [Clear] [Open file]
+Row      Input   ● Valid JSON · 1,204 chars        [Output] [Tree] [Query] [Diff]   Formatted [⧉][⤓]
+         ┌──────────────────────────────┐ ┌────────────────────────────────────────┐
+         │ input (CodeMirror)           │ │ output (read-only, CodeMirror)         │
+         │                              │ │                                        │
+         └──────────────────────────────┘ └────────────────────────────────────────┘
 Diff tab: [Left editor] [Right editor] [Compare] → table of changes
 ```
 
@@ -453,7 +456,7 @@ ENCODER: Algorithm [HS256▾] · Header editor · Payload editor + helpers
 
 ---
 
-## 6. Tool: Base64 URL
+## 6. Tool: Base64 Encode/Decode
 
 ### 6.1 Overview
 Converts text to Base64URL (URL-safe) or standard Base64, and back. Text is always treated as UTF-8.
@@ -501,7 +504,7 @@ type Base64Output =
 ### 6.7 UI overview
 
 ```
-┌ Base64 URL ─────────────────────────────────────────────────────┐
+┌ Base64 Encode/Decode ─────────────────────────────────────────────────────┐
 │ (● Encode ○ Decode)  Alphabet [Base64URL▾]  ☐ Padding  [⇄ Swap] │
 ├───────────────────────────────┬─────────────────────────────────┤
 │ Text (UTF-8)                  │ Base64URL            [Copy][⤓]  │
@@ -661,35 +664,221 @@ interface SchemaDecodeOptions {
 
 ---
 
-## 8. Implementation milestones (whole project)
+## 8. Tool: Random String
 
-Each milestone ends with green tests, a clean typecheck, and a manual browser check.
+### 8.1 Overview
+Generates random strings for tokens, API keys, passwords, IDs, and test data. Uses the
+browser's cryptographically secure random source (`crypto.getRandomValues`) and shows how
+many bits of entropy each string carries, so users can judge how strong it is.
 
-| # | Milestone | Summary | Done when |
-|---|---|---|---|
-| **M0** | Foundation | Nuxt 4 shell, layout, header, theme toggle, and stub pages. **Already done.** | Routes render, the theme persists, and 14 tests pass. |
-| **M1** | Platform | Switch to build-time prerendering. Approve and add dependencies. Build `CodeEditor`, `FileDrop`, `DownloadButton`, `StatusBadge`, `ShortcutHelp`, `useShortcuts`, and `usePreference`. Add the CSP and SEO meta. | Every route is prerendered with its own meta tags, there are no hydration warnings, and the shared components are tested. |
-| **M2** | Base64 URL (B1) | The complete Base64 tool, which proves the shared components work end to end. | All B64 requirements are met. |
-| **M3** | JSON core (J1) | Validate, format, minify, sort, error markers, and the big-number warning. | JSON-01 to 06 and 13–14 are met. |
-| **M4** | JSON advanced (J2 + J3) | Tree view, JSONPath, escape/unescape, and diff. | JSON-07 to 12 are met. The tree stays smooth on a 5 MB file. |
-| **M5** | JWT Decoder (W1 + W2) | Decode, claims, time status, and verification with secret, PEM, X.509, and JWK. | JWTD-01 to 14 are met. |
-| **M6** | JWT Encoder (W3) | Signing, key generation, helpers, and Open in Decoder. | JWTE-01 to 08 are met. A round trip verifies for every algorithm. |
-| **M7** | Protobuf raw (P1 + P2) | Wire decoding and all the framings. | PB-01 to 09 are met. |
-| **M8** | Protobuf schema (P3) | Schema decode and encode. | PB-10 to 16 are met. |
-| **M9** | Launch hardening | Accessibility audit, performance check against the 5 MB targets, a Playwright smoke test per tool, security headers at the host, sitemap/robots/404, a privacy page, and deployment. | Lighthouse ≥ 95 for accessibility, SEO, and best practices on every route. The CSP blocks every outgoing request. |
+### 8.2 Goals
+- Produce strings that are safe to use as secrets, with no bias toward any character.
+- Make a string's strength visible, not just its length.
+- Generate batches for test data, with optional uniqueness.
 
-Suggested order: M1 → M2 → M3 → M5 → M7 → M4 → M6 → M8 → M9. This order puts the core
-decoding of every tool in front of users first and adds the advanced features afterwards.
-The table order (M2 to M8) also works if you'd rather finish one tool completely before
-starting the next.
+### 8.3 Scope
+**In:** character-type checkboxes (uppercase, lowercase, digits, symbols), a custom characters
+field, length (default 32), count, the entropy estimate, unique per batch, copy, download,
+Sample, Clear, and shortcuts.
+
+**Out (v1):** pronounceable passwords and passphrases, UUIDs and ULIDs, pattern-based
+generation (regex), saving generated values, and fixed presets for hex or Base64URL. Those are
+covered by the custom characters field (see RS-03).
+
+**Input:** this tool has no input text, so the shared file drop doesn't apply.
+
+### 8.4 Functional requirements
+
+| ID | Requirement |
+|---|---|
+| RS-01 | **Character types** are checkboxes: Uppercase (`A–Z`), Lowercase (`a–z`), Digits (`0–9`), and Symbols. Uppercase, Lowercase, and Digits are checked by default. Any combination can be chosen. |
+| RS-02 | **Symbols** adds `!@#$%^&*()-_=+[]{};:,.<>?`. It's unchecked by default. |
+| RS-03 | **Custom characters** is a text field whose characters are added to the checked types. Duplicates are removed. Without any checked type, the custom characters alone form the alphabet. The alphabet needs at least 2 different characters, and custom characters can't include whitespace. The field takes literal characters and doesn't expand ranges, so every character must be typed out. Hex is `0123456789abcdef`. Base64URL-safe is `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_`. |
+| RS-04 | If no type is checked and the custom field is empty, show "Pick at least one character type or enter custom characters". |
+| RS-05 | **Length** is a whole number from 1 to 1024, default 32. Out-of-range values show an inline error. |
+| RS-06 | **Count** is a whole number from 1 to 1000, default 1. |
+| RS-07 | Every character is chosen with `crypto.getRandomValues` using rejection sampling, so no character is favoured (no modulo bias). |
+| RS-08 | **Entropy estimate:** bits per string = length × log2(alphabet size), shown as, for example, "190.5 bits per string" for 32 characters of letters + digits. |
+| RS-09 | **Unique per batch** (a checkbox) makes sure no two strings in the batch are equal. If the alphabet and length can't produce that many distinct values, show "Not enough unique values for this alphabet and length". |
+| RS-10 | **Generate** (button or Mod+Enter) creates the batch. Changing options doesn't regenerate automatically. Output is one string per line, read-only, with Copy and Download (`random.txt`). |
+| RS-11 | Character-type checkboxes, length, count, and unique settings are remembered. Custom characters text and generated values are never stored. |
+| RS-12 | Shared features: Sample (default options, then generates), Clear, copy, download, and shortcuts. |
+
+### 8.5 Non-functional requirements
+- Generating 1000 strings of 1024 characters takes under 200 ms.
+- Generated strings are shown only as text.
+
+### 8.6 Data model
+
+```ts
+interface RandomStringOptions {
+  uppercase: boolean
+  lowercase: boolean
+  digits: boolean
+  symbols: boolean
+  customChars: string
+  length: number
+  count: number
+  unique: boolean
+}
+
+interface RandomStringResult { values: string[]; alphabetSize: number; entropyBits: number }
+// Generate returns Result<RandomStringResult>
+```
+
+### 8.7 UI overview
+
+```
+┌ Random String ───────────────────────────────────────────────────────┐
+│ Types  ☑ Uppercase  ☑ Lowercase  ☑ Digits  ☐ Symbols                  │
+│ Custom characters [______________]   Length [32]  Count [1]           │
+│ ☐ Unique per batch                      [Generate] [Sample] [Clear]   │
+├──────────────────────────────────────────────────────────────────────┤
+│ Output (read-only)                                       [Copy][⤓]    │
+│ 7fK2pQ9xLw0Zr3TmVb8NcE1sHy4UaJdG                                      │
+│ Alphabet 62 · 190.5 bits per string                                   │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### 8.8 Workflow
+1. Tick the character types you want, and set a length and a count.
+2. Press Generate (or Mod+Enter), and check the entropy estimate.
+3. Copy or download the batch.
+
+### 8.9 Architecture
+
+| File | Role |
+|---|---|
+| `app/pages/tools/random-string.vue` | Options and output |
+| `app/utils/random/charset.ts` | `buildAlphabet(options)`, which returns the deduplicated alphabet or a `ToolError` |
+| `app/utils/random/generate.ts` | `generateStrings(options, source?)` → `Result<RandomStringResult>`, `createIndexPicker(source)` (rejection sampling, returns `(max) => index`), `entropyBits(length, alphabetSize)`, `rangeError`, `isLength`, `isCount` |
+
+### 8.10 Milestones
+- **Part of M9** (see §10).
 
 ---
 
-## 9. Risks and open questions
+## 9. Tool: String Inspector
+
+### 9.1 Overview
+Paste any text to see how big it is: counts of characters, code units, lines, and whitespace,
+plus the length the text would take after encoding it as Base64, hex, URL-encoding, or a JSON
+string.
+
+### 9.2 Goals
+- Answer "how long is this, really?" with the number that fits the context: characters,
+  bytes, or encoded length.
+- Show the size a string will have after encoding, before the user encodes it.
+
+### 9.3 Scope
+**In:** character, code unit, and byte counts; line and whitespace counts; encoded lengths
+(Base64, Base64URL, hex, URL-encoded, JSON-escaped); copy, download, Sample, Clear, file drop,
+and shortcuts.
+
+**Out (v1):** per-character Unicode names (this needs a new data package, so it's left for
+later), character frequency charts, warnings about hidden or look-alike characters, decoding
+the input (use the Base64 Encode/Decode tool), and search.
+
+### 9.4 Functional requirements
+
+| ID | Requirement |
+|---|---|
+| SI-01 | Stats update live as the user types, with a 300 ms debounce. Above 1 MB, updates pause and an "Analyze" button runs them instead. |
+| SI-02 | **Character counts:** code points (so an emoji counts as one) and UTF-16 code units (what JavaScript's `length` reports). Grapheme counts are left out, since they're mainly useful for user-facing text limits. |
+| SI-03 | **Size:** UTF-8 and UTF-16 bytes, each shown as an exact number and a readable size (for example "1.2 KB"). |
+| SI-04 | **Lines** count line breaks (`\r\n`, `\n`, or `\r`), plus one for non-empty text. Empty input gives 0. **Whitespace** counts space, tab, and line-break characters. |
+| SI-06 | **Encoded lengths** in characters: Base64 (standard, padded), Base64URL (unpadded), hex (2 per byte), URL-encoded (percent-encoded the way `encodeURIComponent` does), and JSON-escaped (the string literal's contents, without the quotes). |
+| SI-07 | Empty input shows zeros, not errors. Input over 5 MB shows "Too large: the limit is 5 MB". |
+| SI-08 | **Output:** a table of metric and value. **Copy** and **Download** (`string-stats.json`) produce the same stats as JSON. |
+| SI-09 | Shared features: drop or upload a UTF-8 text file, Sample, Clear, and shortcuts. There are no preferences to remember. |
+| SI-10 | Input is never logged, stored, or sent anywhere. |
+
+### 9.5 Non-functional requirements
+- Stats for 5 MB of text finish in under 1 s.
+- The editor stays responsive while typing in a 1 MB document.
+
+### 9.6 Data model
+
+```ts
+interface StringStats {
+  characters: number                      // code points
+  codeUnits: number                       // UTF-16, JavaScript length
+  utf8Bytes: number
+  utf16Bytes: number
+  lines: number
+  whitespace: number
+  encodings: {
+    base64: number
+    base64url: number
+    hex: number
+    urlEncoded: number
+    jsonEscaped: number
+  }
+}
+```
+
+### 9.7 UI overview
+
+```
+┌ String Inspector ──────────────────────────────────────────────────────┐
+│ [Sample] [Clear] [Open file]                                             │
+├────────────────────────────────────┬───────────────────────────────────┤
+│ Input (plain text)                 │ Characters 7 · UTF-16 units 8       │
+│ héllo 👋                            │ UTF-8 bytes 11 · UTF-16 bytes 16    │
+│                                    │ Lines 1 · Whitespace 1              │
+│                                    │ Encoded: Base64 16 · hex 22 …       │
+│                                    │                           [Copy][⤓] │
+└────────────────────────────────────┴───────────────────────────────────┘
+```
+
+### 9.8 Workflow
+1. Paste or drop text. The stats appear as you type.
+2. Read the counts and sizes, then copy them or download them as JSON.
+
+### 9.9 Architecture
+
+| File | Role |
+|---|---|
+| `app/pages/tools/string-inspector.vue` | Input and stats |
+| `app/components/string/StatsTable.vue` | Presentation of the stats table |
+| `app/utils/string/stats.ts` | `analyzeString(text): Result<StringStats>`. Encoded lengths are computed from the UTF-8 byte count, so it doesn't depend on `app/utils/base64url.ts`. |
+
+### 9.10 Milestones
+- **M10** (see §10).
+
+---
+
+## 10. Implementation milestones (whole project)
+
+Each milestone ends with green tests, a clean typecheck, and a manual browser check.
+
+| # | Milestone | Summary | Done when | Status |
+|---|---|---|---|---|
+| **M0** | Foundation | Nuxt 4 shell, layout, header, theme toggle, and stub pages. **Already done.** | Routes render, the theme persists, and the tests pass. | Done. Routes, theme, and header work. |
+| **M1** | Platform | Switch to build-time prerendering. Approve and add dependencies. Build `CodeEditor`, `FileDrop`, `DownloadButton`, `StatusBadge`, `ShortcutHelp`, `useShortcuts`, and `usePreference`. Add the CSP and SEO meta. | Every route is prerendered with its own meta tags, there are no hydration warnings, and the shared components are tested. | Partly done. Shared components, build-time prerendering, SEO meta, sitemap, robots.txt, and the 404 page are done. The CSP is not. |
+| **M2** | Base64 Encode/Decode (B1) | The complete Base64 tool, which proves the shared components work end to end. | All B64 requirements are met. | Not started. Placeholder page. |
+| **M3** | JSON core (J1) | Validate, format, minify, sort, error markers, and the big-number warning. | JSON-01 to 06 and 13–14 are met. | Implemented. Not yet audited against JSON-01 to 06 and 13–14. |
+| **M4** | JSON advanced (J2 + J3) | Tree view, JSONPath, escape/unescape, and diff. | JSON-07 to 12 are met. The tree stays smooth on a 5 MB file. | Implemented. Not yet audited against JSON-07 to 12. |
+| **M5** | JWT Decoder (W1 + W2) | Decode, claims, time status, and verification with secret, PEM, X.509, and JWK. | JWTD-01 to 14 are met. | Not started. Placeholder page, and `jose` is not installed. |
+| **M6** | JWT Encoder (W3) | Signing, key generation, helpers, and Open in Decoder. | JWTE-01 to 08 are met. A round trip verifies for every algorithm. | Not started. |
+| **M7** | Protobuf raw (P1 + P2) | Wire decoding and all the framings. | PB-01 to 09 are met. | Not started. Placeholder page, and `protobufjs` is not installed. |
+| **M8** | Protobuf schema (P3) | Schema decode and encode. | PB-10 to 16 are met. | Not started. |
+| **M9** | Random String | Character-type checkboxes, custom characters, length and count, entropy estimate, and unique batches. | RS-01 to RS-12 are met. Rejection sampling is unit-tested for uniform output with an injected random source. | Implemented. 163 tests and the typecheck pass. |
+| **M10** | String Inspector | Counts, lines, whitespace, UTF-8 bytes, encoded lengths, and stats output. | SI-01 to SI-10 are met. | Implemented. Tests and typecheck pass. |
+| **M11** | Launch hardening | Accessibility audit, performance check against the 5 MB targets, a Playwright smoke test per tool, security headers at the host, sitemap/robots/404, a privacy page, and deployment. | Lighthouse ≥ 95 for accessibility, SEO, and best practices on every route. The CSP blocks every outgoing request. | Not started. |
+
+Suggested order: M1 → M2 → M3 → M5 → M7 → M4 → M6 → M8 → M9 → M10 → M11. This order puts
+the core decoding of every tool in front of users first and adds the advanced features
+afterwards. The table order (M2 to M10) also works if you'd rather finish one tool completely
+before starting the next.
+
+---
+
+## 11. Risks and open questions
 
 | # | Item | Notes / proposed answer |
 |---|---|---|
-| R1 | **Hosting and domain aren't chosen.** | Any static host works (Cloudflare Pages, Netlify, S3 + CloudFront). It must support custom response headers for the CSP. |
+| R1 | **Hosting: Vercel (free).** Production URL is `https://devkit-tau-seven.vercel.app`. | Deploy the output of `nuxt generate` (prerendered). Vercel adds the security headers the CSP needs, so that still needs setting up in M11. A custom domain isn't chosen yet. |
 | R2 | **CSP and inline scripts.** Nuxt and color-mode inject small inline scripts. | Allow them by hash in `script-src`, or accept `'unsafe-inline'` for scripts only. `connect-src 'self'` is the part that actually guarantees privacy. Decide in M1. |
 | R3 | **Hydration mismatches after switching to prerendering.** | Keep browser-only parts inside `<ClientOnly>`. The theme icon waits for `colorMode.unknown` to clear. Check the console on every route. |
 | R4 | **Bundle size from CodeMirror and jose.** | Code-split per route and lazy-load editor languages. Measure in M1 against the 300 KB gzipped budget. |
@@ -697,12 +886,14 @@ starting the next.
 | R6 | **Ed25519 in older browsers.** | Supported in all current evergreen browsers. Otherwise show "EdDSA not supported in this browser". |
 | R7 | **jwt.io parity details.** | jwt.io's current UI wasn't fully documented publicly. Do a side-by-side comparison during M5–M6 and log any gaps. |
 | R8 | **The starter skill still says `ssr: false`.** | Update `.claude/skills/nuxt-frontend-starter` after M1 so future scaffolds match this spec. |
-| Q1 | Branding: is "DevKit" the public name, and is there a logo? | Open. |
-| Q2 | Is a privacy or legal page needed for a public launch? | Proposed: a short "How DevKit handles your data" page in M9. |
+| Q1 | Branding: is "DevKit" the public name? | Open. A wrench icon is used as the logo in the header and as `public/favicon.svg`. |
+| Q2 | Is a privacy or legal page needed for a public launch? | Proposed: a short "How DevKit handles your data" page in M11. |
+| Q3 | **Random String symbol set.** | Proposed: `!@#$%^&*()-_=+[]{};:,.<>?`. It leaves out quotes and backslashes, so pasted values survive most shells and JSON. Confirm or change. |
+| Q4 | **String Inspector Unicode names.** Left out of v1. | Needs a data package, so it's a new dependency to approve later. |
 
 ---
 
-## 10. Glossary
+## 12. Glossary
 
 | Term | Meaning |
 |---|---|

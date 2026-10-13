@@ -20,8 +20,9 @@ const props = withDefaults(
     readonly?: boolean
     diagnostics?: readonly EditorDiagnostic[]
     placeholder?: string
+    wrap?: boolean
   }>(),
-  { language: 'json', readonly: false, diagnostics: () => [], placeholder: '' },
+  { language: 'json', readonly: false, diagnostics: () => [], placeholder: '', wrap: false },
 )
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
@@ -49,12 +50,17 @@ const languageSlot = new Compartment()
 const readonlySlot = new Compartment()
 const placeholderSlot = new Compartment()
 const attributesSlot = new Compartment()
+const wrapSlot = new Compartment()
 let view: EditorView | null = null
 // Skips the round trip when the parent echoes back the value we just emitted.
 let lastEmitted: string | null = null
 
 function languageExtension(language: EditorLanguage): Extension {
   return language === 'json' ? json() : []
+}
+
+function wrapExtension(wrap: boolean): Extension {
+  return wrap ? EditorView.lineWrapping : []
 }
 
 function contentAttributes(): Extension {
@@ -87,6 +93,7 @@ onMounted((): void => {
         readonlySlot.of(EditorState.readOnly.of(props.readonly)),
         placeholderSlot.of(placeholderExtension(props.placeholder)),
         attributesSlot.of(contentAttributes()),
+        wrapSlot.of(wrapExtension(props.wrap)),
         EditorView.updateListener.of((update: ViewUpdate): void => {
           if (!update.docChanged) return
           const value = update.state.doc.toString()
@@ -131,6 +138,10 @@ watch(
     view?.dispatch({
       effects: [readonlySlot.reconfigure(EditorState.readOnly.of(props.readonly)), attributesSlot.reconfigure(contentAttributes())],
     }),
+)
+watch(
+  () => props.wrap,
+  (wrap: boolean): void => view?.dispatch({ effects: wrapSlot.reconfigure(wrapExtension(wrap)) }),
 )
 watch(
   () => props.placeholder,

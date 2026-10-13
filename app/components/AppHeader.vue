@@ -20,9 +20,9 @@ import { TOOLS } from '~/utils/tools'
           :key="tool.slug"
           :to="tool.to"
           :data-testid="`nav-${tool.slug}`"
-          class="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
+          class="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-muted hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground"
         >
-          <component :is="tool.icon" class="size-4" aria-hidden="true" />
+          <component :is="tool.icon" class="size-4" :stroke-width="2.5" aria-hidden="true" />
           <span class="sr-only sm:not-sr-only">{{ tool.title }}</span>
         </NuxtLink>
       </nav>
