@@ -375,13 +375,13 @@ onBeforeUnmount((): void => {
 })
 
 const buttonClass =
-  'inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-sm hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 py-1.5 text-sm hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
 const primaryButtonClass =
   'inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none'
 </script>
 
 <template>
-  <ToolPage :title="tool.title" :description="tool.description" :icon="tool.icon">
+  <ToolPage :title="tool.title" :description="tool.description" :icon="tool.icon" :color="tool.color">
     <div class="flex flex-col gap-4 lg:flex-1">
       <div role="toolbar" aria-label="JSON actions" class="flex flex-wrap items-center gap-2">
         <button type="button" data-testid="json-format" :class="primaryButtonClass" @click="format">
@@ -405,7 +405,7 @@ const primaryButtonClass =
           <select
             v-model="indent"
             data-testid="json-indent"
-            class="rounded-md border border-border bg-surface px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            class="rounded-md border border-control-border bg-surface px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
           >
             <option v-for="option in JSON_INDENTS" :key="option" :value="option">
               {{ option === 'tab' ? 'Tab' : `${option} spaces` }}
@@ -433,8 +433,27 @@ const primaryButtonClass =
 
       <div class="grid grid-cols-1 gap-4 lg:min-h-[max(30rem,calc(100dvh-24rem))] lg:flex-1 lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)]">
         <FileDrop ref="inputDrop" class="lg:h-full" accept=".json,application/json,text/plain" @load="onInputFile">
-          <div class="flex h-9 items-center">
-            <span class="text-sm font-medium">{{ activeTab === 'diff' ? 'Left (input)' : 'Input' }}</span>
+          <div class="flex h-9 items-center justify-between gap-4">
+            <span class="shrink-0 text-sm font-medium">{{ activeTab === 'diff' ? 'Left (input)' : 'Input' }}</span>
+            <div class="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-1" data-testid="json-status">
+              <StatusBadge v-if="input.trim() === ''" tone="muted">Paste JSON, drop a .json file, or load the sample.</StatusBadge>
+              <StatusBadge v-else-if="livePaused" tone="muted">
+                Large input ({{ formatBytes(input.length) }}): live validation paused. Press Format or Ctrl/⌘ + Enter.
+              </StatusBadge>
+              <template v-else-if="info">
+                <StatusBadge v-if="info.valid" tone="success" data-testid="json-valid">
+                  Valid JSON · {{ info.size.toLocaleString() }} chars
+                </StatusBadge>
+                <div v-else class="flex flex-wrap items-center gap-2" role="alert">
+                  <StatusBadge tone="danger" data-testid="json-invalid">Invalid JSON</StatusBadge>
+                  <span data-testid="json-error" class="text-sm text-danger">{{ describeError(info.error ?? { message: 'Unknown error' }) }}</span>
+                </div>
+                <StatusBadge v-if="info.hasUnsafeIntegers" tone="warning" data-testid="json-unsafe-warning">
+                  Some numbers are too large and may lose precision.
+                </StatusBadge>
+              </template>
+              <span aria-live="polite" data-testid="json-notice" class="text-sm text-muted">{{ notice }}</span>
+            </div>
           </div>
           <div class="h-80 lg:h-auto lg:min-h-0 lg:flex-1 lg:contain-size">
             <CodeEditor
@@ -448,7 +467,14 @@ const primaryButtonClass =
         </FileDrop>
 
         <div class="flex min-h-0 min-w-0 flex-col gap-2 lg:h-full">
-          <TabList v-model="activeTab" :tabs="TABS" label="JSON views" id-prefix="json" />
+          <div class="flex min-w-0 items-center gap-2">
+            <TabList v-model="activeTab" class="min-w-0 flex-1" :tabs="TABS" label="JSON views" id-prefix="json" />
+            <div v-if="activeTab === 'output'" class="flex shrink-0 items-center gap-2">
+              <span class="text-sm font-medium" data-testid="json-output-title">{{ OUTPUT_TITLES[outputKind] }}</span>
+              <CopyButton :text="output" compact />
+              <DownloadButton :payload="output === '' ? null : outputPayload" compact />
+            </div>
+          </div>
 
           <div
             v-show="activeTab === 'output'"
@@ -457,13 +483,6 @@ const primaryButtonClass =
             aria-labelledby="json-tab-output"
             class="flex flex-col gap-2 lg:min-h-0 lg:flex-1"
           >
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-sm font-medium" data-testid="json-output-title">{{ OUTPUT_TITLES[outputKind] }}</span>
-              <div class="flex gap-2">
-                <CopyButton :text="output" />
-                <DownloadButton :payload="output === '' ? null : outputPayload" />
-              </div>
-            </div>
             <p v-if="outputError" role="alert" data-testid="json-output-error" class="text-sm text-danger">
               {{ describeError(outputError) }}
             </p>
@@ -513,7 +532,7 @@ const primaryButtonClass =
               spellcheck="false"
               autocomplete="off"
               placeholder="$.items[?(@.price > 10)].name"
-              class="w-full rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+              class="w-full rounded-md border border-control-border bg-surface px-3 py-1.5 font-mono text-sm focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
               @keydown.enter.prevent="runQuery"
             />
             <div class="flex min-h-7 items-center justify-between gap-2">
@@ -561,26 +580,6 @@ const primaryButtonClass =
             </FileDrop>
           </div>
         </div>
-      </div>
-
-      <div class="flex min-h-6 flex-wrap items-center gap-x-6 gap-y-1" data-testid="json-status">
-        <StatusBadge v-if="input.trim() === ''" tone="muted">Paste JSON, drop a .json file, or load the sample.</StatusBadge>
-        <StatusBadge v-else-if="livePaused" tone="muted">
-          Large input ({{ formatBytes(input.length) }}): live validation paused. Press Format or Ctrl/⌘ + Enter.
-        </StatusBadge>
-        <template v-else-if="info">
-          <StatusBadge v-if="info.valid" tone="success" data-testid="json-valid">
-            Valid JSON · {{ info.size.toLocaleString() }} chars
-          </StatusBadge>
-          <div v-else class="flex flex-wrap items-center gap-2" role="alert">
-            <StatusBadge tone="danger" data-testid="json-invalid">Invalid JSON</StatusBadge>
-            <span data-testid="json-error" class="text-sm text-danger">{{ describeError(info.error ?? { message: 'Unknown error' }) }}</span>
-          </div>
-          <StatusBadge v-if="info.hasUnsafeIntegers" tone="warning" data-testid="json-unsafe-warning">
-            Some numbers are too large and may lose precision.
-          </StatusBadge>
-        </template>
-        <span aria-live="polite" data-testid="json-notice" class="text-sm text-muted">{{ notice }}</span>
       </div>
 
       <section

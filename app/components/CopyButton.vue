@@ -42,7 +42,7 @@ onBeforeUnmount((): void => clearTimeout(resetTimer))
     :disabled="isDisabled"
     :title="failureHint ?? (compact ? label : undefined)"
     :aria-label="compact ? label : undefined"
-    class="inline-flex items-center gap-1.5 rounded-md border border-border text-xs hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+    class="inline-flex items-center gap-1.5 rounded-md border border-control-border text-xs hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
     :class="compact ? 'p-1' : 'px-2.5 py-1'"
     @click="copy"
   >

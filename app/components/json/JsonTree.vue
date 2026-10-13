@@ -15,7 +15,7 @@ const root = computed<JsonTreeNode>(() => createRootNode(props.value))
       <button
         type="button"
         data-testid="json-tree-expand-all"
-        class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+        class="inline-flex items-center gap-1.5 rounded-md border border-control-border px-2.5 py-1 text-xs hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
         @click="expand.set('all')"
       >
         <ChevronsUpDown class="size-3.5" aria-hidden="true" />
@@ -24,7 +24,7 @@ const root = computed<JsonTreeNode>(() => createRootNode(props.value))
       <button
         type="button"
         data-testid="json-tree-collapse-all"
-        class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+        class="inline-flex items-center gap-1.5 rounded-md border border-control-border px-2.5 py-1 text-xs hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
         @click="expand.set('none')"
       >
         <ChevronsDownUp class="size-3.5" aria-hidden="true" />

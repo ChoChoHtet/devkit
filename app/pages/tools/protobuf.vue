@@ -8,7 +8,7 @@ useHead({ title: tool.title })
 </script>
 
 <template>
-  <ToolPage :title="tool.title" :description="tool.description" :icon="tool.icon">
+  <ToolPage :title="tool.title" :description="tool.description" :icon="tool.icon" :color="tool.color">
     <div
       data-testid="tool-placeholder"
       class="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted"
