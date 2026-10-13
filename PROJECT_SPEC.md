@@ -123,7 +123,7 @@ icons. Tests run on Vitest 5 with `@nuxt/test-utils` 4.
   inside `<ClientOnly>`, so prerendering never touches it.
 - The theme toggle icon must avoid a hydration mismatch. Render it client-only, or show a
   neutral icon while `colorMode.unknown` is true.
-- Hosting is any static host (open question §11). Security headers are set at the host or CDN.
+- Hosting is any static host (open question §11). Set `NUXT_PUBLIC_SITE_URL` at build time so the sitemap and robots.txt use absolute URLs. Security headers are set at the host or CDN.
 
 **Layers:**
 
@@ -855,7 +855,7 @@ Each milestone ends with green tests, a clean typecheck, and a manual browser ch
 | # | Milestone | Summary | Done when | Status |
 |---|---|---|---|---|
 | **M0** | Foundation | Nuxt 4 shell, layout, header, theme toggle, and stub pages. **Already done.** | Routes render, the theme persists, and the tests pass. | Done. Routes, theme, and header work. |
-| **M1** | Platform | Switch to build-time prerendering. Approve and add dependencies. Build `CodeEditor`, `FileDrop`, `DownloadButton`, `StatusBadge`, `ShortcutHelp`, `useShortcuts`, and `usePreference`. Add the CSP and SEO meta. | Every route is prerendered with its own meta tags, there are no hydration warnings, and the shared components are tested. | Partly done. Shared components are built. Build-time prerendering, the CSP, and SEO meta are not. |
+| **M1** | Platform | Switch to build-time prerendering. Approve and add dependencies. Build `CodeEditor`, `FileDrop`, `DownloadButton`, `StatusBadge`, `ShortcutHelp`, `useShortcuts`, and `usePreference`. Add the CSP and SEO meta. | Every route is prerendered with its own meta tags, there are no hydration warnings, and the shared components are tested. | Partly done. Shared components, build-time prerendering, SEO meta, sitemap, robots.txt, and the 404 page are done. The CSP is not. |
 | **M2** | Base64 Encode/Decode (B1) | The complete Base64 tool, which proves the shared components work end to end. | All B64 requirements are met. | Not started. Placeholder page. |
 | **M3** | JSON core (J1) | Validate, format, minify, sort, error markers, and the big-number warning. | JSON-01 to 06 and 13–14 are met. | Implemented. Not yet audited against JSON-01 to 06 and 13–14. |
 | **M4** | JSON advanced (J2 + J3) | Tree view, JSONPath, escape/unescape, and diff. | JSON-07 to 12 are met. The tree stays smooth on a 5 MB file. | Implemented. Not yet audited against JSON-07 to 12. |
@@ -878,7 +878,7 @@ before starting the next.
 
 | # | Item | Notes / proposed answer |
 |---|---|---|
-| R1 | **Hosting and domain aren't chosen.** | Any static host works (Cloudflare Pages, Netlify, S3 + CloudFront). It must support custom response headers for the CSP. |
+| R1 | **Hosting: Vercel (free).** Production URL is `https://devkit-tau-seven.vercel.app`. | Deploy the output of `nuxt generate` (prerendered). Vercel adds the security headers the CSP needs, so that still needs setting up in M11. A custom domain isn't chosen yet. |
 | R2 | **CSP and inline scripts.** Nuxt and color-mode inject small inline scripts. | Allow them by hash in `script-src`, or accept `'unsafe-inline'` for scripts only. `connect-src 'self'` is the part that actually guarantees privacy. Decide in M1. |
 | R3 | **Hydration mismatches after switching to prerendering.** | Keep browser-only parts inside `<ClientOnly>`. The theme icon waits for `colorMode.unknown` to clear. Check the console on every route. |
 | R4 | **Bundle size from CodeMirror and jose.** | Code-split per route and lazy-load editor languages. Measure in M1 against the 300 KB gzipped budget. |

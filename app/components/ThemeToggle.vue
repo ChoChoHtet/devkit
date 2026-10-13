@@ -2,7 +2,12 @@
 import { Moon, Sun } from '@lucide/vue'
 
 const colorMode = useColorMode()
-const isDark = computed<boolean>(() => colorMode.value === 'dark')
+// The prerendered page has no idea of the visitor's theme, so the first client render must match it.
+const mounted = ref<boolean>(false)
+onMounted((): void => {
+  mounted.value = true
+})
+const isDark = computed<boolean>(() => mounted.value && colorMode.value === 'dark')
 
 function toggle(): void {
   colorMode.preference = isDark.value ? 'light' : 'dark'

@@ -16,7 +16,7 @@ const JSON_MIME = 'application/json'
 const SAMPLE_TEXT = 'Hello, 世界! 👋\nSecond line.'
 
 const tool: ToolDefinition = getTool('string-inspector')
-useHead({ title: tool.title })
+useToolSeo(tool)
 
 const inputDrop = ref<{ open: () => void } | null>(null)
 const input = ref<string>('')

@@ -4,7 +4,7 @@ import type { ToolDefinition } from '~/utils/tools'
 
 const tool: ToolDefinition = getTool('jwt-inspector')
 
-useHead({ title: tool.title })
+useToolSeo(tool)
 </script>
 
 <template>

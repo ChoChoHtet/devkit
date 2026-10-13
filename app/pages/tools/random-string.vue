@@ -21,7 +21,7 @@ const NOTICE_MS = 2000
 const TEXT_MIME = 'text/plain'
 
 const tool: ToolDefinition = getTool('random-string')
-useHead({ title: tool.title })
+useToolSeo(tool)
 
 const uppercase = usePreference<boolean>('random.uppercase', true, isBoolean)
 const lowercase = usePreference<boolean>('random.lowercase', true, isBoolean)

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { TOOLS } from '~/utils/tools'
 
-useHead({ title: 'Tools' })
+useSeoMeta({
+  title: 'Tools',
+  description: 'Free developer tools that run entirely in your browser: JSON, JWT, Base64, Protobuf, random strings and text stats.',
+  ogTitle: 'DevKit · Developer tools',
+  ogDescription: 'Free developer tools that run entirely in your browser.',
+  ogType: 'website',
+})
 </script>
 
 <template>

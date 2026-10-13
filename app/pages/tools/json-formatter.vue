@@ -59,7 +59,7 @@ const OUTPUT_TITLES: Readonly<Record<OutputKind, string>> = {
 }
 
 const tool: ToolDefinition = getTool('json-formatter')
-useHead({ title: tool.title })
+useToolSeo(tool)
 
 const inputDrop = ref<{ open: () => void } | null>(null)
 
