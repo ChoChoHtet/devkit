@@ -1,7 +1,14 @@
 import type { Component } from 'vue'
-import { Binary, Braces, Dices, FileCode, KeyRound, ScanText } from '@lucide/vue'
+import { Binary, Braces, Dices, FileCode, Hourglass, KeyRound, ScanText } from '@lucide/vue'
 
-export type ToolSlug = 'json-formatter' | 'jwt-inspector' | 'base64url' | 'protobuf' | 'random-string' | 'string-inspector'
+export type ToolSlug =
+  | 'json-formatter'
+  | 'jwt-inspector'
+  | 'base64url'
+  | 'protobuf'
+  | 'random-string'
+  | 'string-inspector'
+  | 'timestamp-converter'
 
 export interface ToolDefinition {
   slug: ToolSlug
@@ -40,15 +47,15 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     slug: 'jwt-inspector',
-    title: 'JWT Inspector',
-    description: 'Decode JWT header and claims, check expiry, verify signatures.',
+    title: 'JWT Encoder/Decoder',
+    description: 'Decode JWT claims, check expiry and verify signatures — or build and sign your own token.',
     to: '/tools/jwt-inspector',
     icon: KeyRound,
     color: 'var(--tool-purple)',
   },
   {
     slug: 'base64url',
-    title: 'Base64 Encode/Decode',
+    title: 'Base64 Encoder/Decoder',
     description: 'Encode and decode Base64URL / Base64 text.',
     to: '/tools/base64url',
     icon: Binary,
@@ -61,6 +68,14 @@ export const TOOLS: readonly ToolDefinition[] = [
     to: '/tools/protobuf',
     icon: FileCode,
     color: 'var(--tool-red)',
+  },
+  {
+    slug: 'timestamp-converter',
+    title: 'Unix Timestamp Converter',
+    description: 'Convert between Unix epoch timestamps and local/UTC dates, with handy presets.',
+    to: '/tools/timestamp-converter',
+    icon: Hourglass,
+    color: 'var(--tool-gold)',
   },
 ]
 

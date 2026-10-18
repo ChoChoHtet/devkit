@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v1.1. Platform, JSON Formatter, Random String, and String Inspector are built. Base64, JWT, and Protobuf are still placeholders (see §10). |
+| **Status** | Draft v1.1. Platform, JSON Formatter, Random String, and String Inspector are built. Base64, JWT, Protobuf, and the Unix Timestamp Converter are still placeholders (see §10). |
 | **Date** | 2026-10-13 |
 | **Owner** | TBD |
 | **Codebase** | `devkit/` (Nuxt 4 + TypeScript + Vue 3 + Tailwind v4 + Vitest) |
@@ -11,7 +11,7 @@
 
 ## 1. Summary
 
-DevKit is a free, public website with six everyday developer tools:
+DevKit is a free, public website with seven everyday developer tools:
 
 1. **JSON Formatter**: format, validate, browse, query, and compare JSON.
 2. **Random String**: generate cryptographically random strings for tokens, passwords, and test data.
@@ -19,6 +19,7 @@ DevKit is a free, public website with six everyday developer tools:
 4. **JWT Inspector**: decode, verify, and create JSON Web Tokens, like jwt.io.
 5. **Base64 Encode/Decode**: convert text to and from Base64URL / Base64.
 6. **Protobuf**: decode protobuf bytes with or without a schema, and encode JSON into protobuf.
+7. **Unix Timestamp Converter**: convert between Unix epoch timestamps and local/UTC dates, with handy presets for generating JWT `iat`/`exp` values.
 
 **The core promise: nothing you paste ever leaves your browser.** There's no backend, no
 analytics, and no storage of your input. That matters because people paste tokens,
@@ -865,11 +866,12 @@ Each milestone ends with green tests, a clean typecheck, and a manual browser ch
 | **M8** | Protobuf schema (P3) | Schema decode and encode. | PB-10 to 16 are met. | Not started. |
 | **M9** | Random String | Character-type checkboxes, custom characters, length and count, entropy estimate, and unique batches. | RS-01 to RS-12 are met. Rejection sampling is unit-tested for uniform output with an injected random source. | Implemented. 163 tests and the typecheck pass. |
 | **M10** | String Inspector | Counts, lines, whitespace, UTF-8 bytes, encoded lengths, and stats output. | SI-01 to SI-10 are met. | Implemented. Tests and typecheck pass. |
-| **M11** | Launch hardening | Accessibility audit, performance check against the 5 MB targets, a Playwright smoke test per tool, security headers at the host, sitemap/robots/404, a privacy page, and deployment. | Lighthouse ≥ 95 for accessibility, SEO, and best practices on every route. The CSP blocks every outgoing request. | Not started. |
+| **M11** | Unix Timestamp Converter (T1) | Live clock, decode with unit auto-detect, encode with Local/UTC toggle, and presets. | TS-01 to TS-10 are met. | Not started. Placeholder page. |
+| **M12** | Launch hardening | Accessibility audit, performance check against the 5 MB targets, a Playwright smoke test per tool, security headers at the host, sitemap/robots/404, a privacy page, and deployment. | Lighthouse ≥ 95 for accessibility, SEO, and best practices on every route. The CSP blocks every outgoing request. | Not started. |
 
-Suggested order: M1 → M2 → M3 → M5 → M7 → M4 → M6 → M8 → M9 → M10 → M11. This order puts
+Suggested order: M1 → M2 → M3 → M5 → M7 → M4 → M6 → M8 → M9 → M10 → M11 → M12. This order puts
 the core decoding of every tool in front of users first and adds the advanced features
-afterwards. The table order (M2 to M10) also works if you'd rather finish one tool completely
+afterwards. The table order (M2 to M11) also works if you'd rather finish one tool completely
 before starting the next.
 
 ---
@@ -904,3 +906,104 @@ before starting the next.
 | **gRPC frame** | A 5-byte header (a compression flag plus a 4-byte length) in front of every protobuf message sent over gRPC. |
 | **Prerendering** | Generating each page's HTML at build time, so the site can be served as static files with no server. |
 | **CSP** | Content Security Policy: browser rules that block a page from loading or sending data anywhere it isn't allowed to. |
+
+---
+
+## 13. Tool: Unix Timestamp Converter
+
+### 13.1 Overview
+A small utility for converting between Unix epoch timestamps and human-readable dates,
+in both directions, plus a live "current time" reference and one-click presets for
+generating `iat`/`exp`-style timestamp pairs (the tool exists because hand-computing
+"now + 1 hour" as an epoch number, e.g. to paste into a JWT payload, is error-prone).
+
+### 13.2 Goals
+- Always show "now" as an epoch (seconds and milliseconds) without the user doing anything.
+- Decode a pasted epoch timestamp into Local time, UTC time, and a plain-language relative description.
+- Encode a picked date/time into epoch seconds and milliseconds, interpreted in any IANA time zone.
+- Make it trivial to generate a matched `iat`/`exp` pair with one or two clicks.
+
+### 13.3 Scope
+**In:** a ticking live-time display; decode with automatic seconds-vs-milliseconds
+detection (with a manual override); encode from either free-typed text or a native date/time
+picker (kept in sync), interpreted against any IANA time zone chosen from a dropdown (with a
+pinned "Local (<detected zone>)" shortcut) and shown with its UTC offset; quick presets
+("Now", "+15 min", "+1 hour", "+1 day", "+7 days", "+30 days"); copy buttons on every
+output value; persisted unit/zone preferences.
+
+**Out (v1):** negative/"ago" presets, calendar date arithmetic beyond the fixed preset list,
+parsing free-form date strings (e.g. "next Tuesday"), and ISO-8601 duration input.
+
+### 13.4 Functional requirements
+
+| ID | Requirement |
+|---|---|
+| TS-01 | Show a live "Now" panel with epoch seconds, epoch milliseconds, Local date/time (with zone abbreviation/offset), and UTC ISO date/time, updating once per second. |
+| TS-02 | The Decode section takes a raw numeric timestamp and shows Local date/time, UTC ISO string, and a relative description ("in 2 hours", "3 days ago", "just now"). |
+| TS-03 | Decode auto-detects seconds vs. milliseconds by digit count, with a manual unit override (Auto / Seconds / Milliseconds) for ambiguous or unusual values. |
+| TS-04 | Decode shows a clear error for empty, non-numeric, or out-of-range input, without throwing. |
+| TS-05 | The Encode section takes a date/time via either a plain text field or a native `datetime-local` picker (kept in sync), interpreted against a time zone chosen from a dropdown of every IANA zone plus a pinned "Local (&lt;detected zone&gt;)" shortcut, and shows the resulting epoch seconds, epoch milliseconds, and the zone's UTC offset at that instant. |
+| TS-06 | Quick presets ("Now", "+15 min", "+1 hour", "+1 day", "+7 days", "+30 days") populate the Decode section's raw timestamp field with the computed epoch value, each in one click. |
+| TS-07 | Every output value (epoch seconds, epoch milliseconds, Local string, UTC string) has its own copy button with copied/failed feedback. |
+| TS-08 | The unit-detection override and the selected Encode time zone are remembered across visits. |
+| TS-09 | Clearing the tool resets Decode and Encode inputs; it does not affect the live Now panel. |
+| TS-10 | Shared features: Sample (loads an example timestamp into Decode), Clear, and keyboard shortcuts (copy, clear). |
+
+### 13.5 Non-functional requirements
+- The live clock updates on a 1-second interval and is cleaned up on unmount (no leaked timers).
+- Decode/encode results are computed synchronously on every keystroke/change (no debounce needed — this is cheap arithmetic, unlike large-text analysis elsewhere in DevKit).
+- Encoding against any named IANA zone (including DST transitions) is deterministic and unit-tested; only resolving what the host machine's *own* zone concretely is (for the "Local" shortcut) is non-deterministic across machines, and is confined to the component layer, matching the test conventions used elsewhere in the codebase.
+- Anything that depends on the runtime's Intl data or the host's configured zone (the "Now" clock, the zone list, the resolved local zone) is populated only after mount, never baked into the server-prerendered HTML, to avoid hydration mismatches between the build server and the viewer's browser.
+
+### 13.6 Data model
+
+```ts
+type TimestampUnit = 'auto' | 's' | 'ms'
+
+interface DetectedTimestamp { epochMs: number; unit: 's' | 'ms' }
+
+interface TimestampDecoded {
+  epochMs: number
+  epochSeconds: number
+  unit: 's' | 'ms'
+  utcIso: string
+  relative: string
+}
+
+interface EncodedTimestamp { epochMs: number; epochSeconds: number }
+
+interface PresetOffset { id: string; label: string; offsetSeconds: number }
+```
+
+### 13.7 UI overview
+```
+Header   ⏳ Unix Timestamp Converter   Convert between epoch and local/UTC dates.   [Shortcuts]
+         ✓ Runs entirely in your browser.
+Now      Now: 1760630400 (s) · 1760630400123 (ms)  [⧉][⧉]
+         Local: Oct 16, 2026, 2:30:00 PM GMT+8 [⧉]   UTC: 2026-10-16T06:30:00.000Z [⧉]
+Presets  [Now] [+15 min] [+1 hour] [+1 day] [+7 days] [+30 days]        [Sample] [Clear]
+Decode   Timestamp [___________________]  Unit (○ Auto ○ Seconds ○ Milliseconds)
+         Local: Oct 16, 2026, 2:30:00 PM GMT+8 [⧉]
+         UTC:   2026-10-16T06:30:00.000Z [⧉]
+         Relative: in 2 hours
+Encode   Date/time [2026-01-01T00:00______] [datetime-local picker]   Time zone [Local (Asia/Bangkok) ▾]
+         Epoch seconds: 1760637600 [⧉]   Epoch ms: 1760637600000 [⧉]   Zone offset: GMT+7
+```
+
+### 13.8 Workflow
+1. The user opens the tool and immediately sees the live "Now" panel ticking.
+2. To get a value for a JWT `iat`, they click "Now" — it fills the Decode section's timestamp field with the current epoch seconds, which they copy.
+3. To get a matching `exp`, they click "+1 hour" (or another preset) — it fills the same field with now + 3600 seconds, which they copy.
+4. To decode an arbitrary timestamp (e.g. one found in a log line), they paste it into Decode and read its Local/UTC/relative meaning.
+5. To go the other way — pick a date (by typing or via the picker) and a time zone, and read off its epoch value and that zone's UTC offset.
+
+### 13.9 Architecture
+
+| File | Role |
+|---|---|
+| `app/pages/tools/timestamp-converter.vue` | Page: Now panel, Decode section, Encode section, presets row |
+| `app/utils/timestamp/convert.ts` | `parseTimestamp`, `decodeTimestamp`, `describeRelative`, `encodeZonedDateTime`, `describeZoneOffset`, `listTimeZones`, `resolveLocalTimeZone`, `applyPreset`, `TIMESTAMP_PRESETS`, `isTimestampUnit`, `isNonEmptyString` |
+| `app/components/timestamp/TimestampValueRow.vue` | Reusable "label + value + copy button" row, used for every output value |
+
+### 13.10 Milestones
+- **T1 (core):** live Now panel, Decode with unit auto-detect and relative description, Encode with Local/UTC toggle, presets, copy on every value.

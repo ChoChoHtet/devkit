@@ -17,7 +17,7 @@ describe('TOOLS', () => {
 
 describe('getTool', () => {
   it('returns the matching tool', () => {
-    expect(getTool('jwt-inspector').title).toBe('JWT Inspector')
+    expect(getTool('jwt-inspector').title).toBe('JWT Encoder/Decoder')
   })
 
   it('throws on an unknown slug', () => {

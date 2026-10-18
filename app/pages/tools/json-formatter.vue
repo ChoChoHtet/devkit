@@ -378,25 +378,31 @@ const buttonClass =
   'inline-flex items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 py-1.5 text-sm hover:bg-background focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
 const primaryButtonClass =
   'inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none'
+
+const activeOutputKind = computed<OutputKind | null>(() => (output.value === '' ? null : outputKind.value))
+
+function actionButtonClass(kind: OutputKind): string {
+  return activeOutputKind.value === kind ? primaryButtonClass : buttonClass
+}
 </script>
 
 <template>
   <ToolPage :title="tool.title" :description="tool.description" :icon="tool.icon" :color="tool.color">
     <div class="flex flex-col gap-4 lg:flex-1">
       <div role="toolbar" aria-label="JSON actions" class="flex flex-wrap items-center gap-2">
-        <button type="button" data-testid="json-format" :class="primaryButtonClass" @click="format">
+        <button type="button" data-testid="json-format" :class="actionButtonClass('formatted')" @click="format">
           <TextAlignStart class="size-4" aria-hidden="true" />
           Format
         </button>
-        <button type="button" data-testid="json-minify" :class="buttonClass" @click="minify">
+        <button type="button" data-testid="json-minify" :class="actionButtonClass('minified')" @click="minify">
           <Minimize2 class="size-4" aria-hidden="true" />
           Minify
         </button>
-        <button type="button" data-testid="json-escape" :class="buttonClass" @click="escape">
+        <button type="button" data-testid="json-escape" :class="actionButtonClass('escaped')" @click="escape">
           <Quote class="size-4" aria-hidden="true" />
           Escape
         </button>
-        <button type="button" data-testid="json-unescape" :class="buttonClass" @click="unescape">
+        <button type="button" data-testid="json-unescape" :class="actionButtonClass('unescaped')" @click="unescape">
           <TextQuote class="size-4" aria-hidden="true" />
           Unescape
         </button>
