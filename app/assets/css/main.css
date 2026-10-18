@@ -52,6 +52,7 @@
   --tool-purple: #be123c;
   --tool-orange: #c2410c;
   --tool-red: #475569;
+  --tool-gold: #a16207;
 }
 
 .dark {
@@ -74,6 +75,7 @@
   --tool-purple: #c678dd;
   --tool-orange: #d19a66;
   --tool-red: #e06c75;
+  --tool-gold: #facc15;
 }
 
 @theme inline {
